@@ -41,6 +41,10 @@ class MainApplication(tk.Tk):
         button5 = tk.Button(self, text="לחצן 5", command=lambda: self.button_action(5))
         button5.grid(row=0, column=4, padx=5, pady=5)
 
+        # הוספת כפתור "מחק מידע מקובץ"
+        delete_data_button = tk.Button(self, text="מחק מידע מקובץ", command=self.delete_data_from_file)
+        delete_data_button.grid(row=3, column=0, pady=10, columnspan=5)
+
         # השארת כפתור הפלוס במקום שלו
         add_device_button = tk.Button(self, text="הוסף עמדה", command=self.add_device)
         add_device_button.grid(row=1, column=0, pady=10, columnspan=5)
@@ -50,10 +54,6 @@ class MainApplication(tk.Tk):
         self.tree.heading("IP", text="כתובת IP")
         self.tree.heading("Status", text="מצב")
         self.tree.grid(row=2, column=0, columnspan=5, pady=20)
-
-        # קישור הפעולה לכפתור "רענן כל המכשירים" יימחק
-        # refresh_button = tk.Button(self, text="רענן כל המכשירים", command=self.refresh_all_devices)
-        # refresh_button.grid(row=3, column=0, pady=10, columnspan=5)
 
         # קריאה לפונקציה load_devices_from_file כדי להציג את המכשירים מהקובץ
         self.load_devices_from_file()
@@ -117,18 +117,21 @@ class MainApplication(tk.Tk):
                     # הדפס את הערך שגרם לשגיאה
                     print(f"Error converting item_id to integer: {e}")
 
-    def show_device_details_context_menu(self, event):
-        if not self.devices:
-            return
+            # לאחר המחיקה, עדכן את המצב בקובץ
+            self.save_devices_to_file()
 
-        item_id = self.tree.identify_row(event.y)
-        selected_device = self.devices[int(item_id)-1]
-
-        context_menu = tk.Menu(self, tearoff=0)
-        context_menu.add_command(label="פרטי מכשיר", command=lambda: self.show_device_details(selected_device))
-        context_menu.add_command(label="שמור", command=lambda: self.refresh_device(selected_device))
-        context_menu.add_command(label="מחק", command=lambda: self.delete_device(selected_device))
-        context_menu.post(event.x_root, event.y_root)
+    def delete_data_from_file(self):
+        try:
+            # פתח את הקובץ במצב כתיבה ומחק את כל התוכן
+            with open("devices.txt", "w"):
+                pass
+            # אם נמחק בהצלחה, נעדכן את המכשירים במערך ובטבלה
+            self.devices = []
+            self.tree.delete(*self.tree.get_children())
+            messagebox.showinfo("הודעה", "המידע נמחק בהצלחה.")
+        except Exception as e:
+            # אם יש שגיאה, הדפס אותה
+            messagebox.showerror("שגיאה", f"שגיאה במחיקת המידע: {e}")
 
     def show_device_details(self, device):
         details_window = tk.Toplevel(self)
@@ -159,6 +162,9 @@ class MainApplication(tk.Tk):
 
         # סגירת החלון
         window.destroy()
+
+        # לאחר המחיקה, עדכן את המצב בקובץ
+        self.save_devices_to_file()
 
     def save_and_close_device(self, device, window):
         # שמירת העמדה לקובץ
