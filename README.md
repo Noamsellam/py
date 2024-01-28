@@ -6,10 +6,10 @@ import threading
 import time
 
 class Device:
-    def __init__(self, name, ip, ping_status=False):
+    def __init__(self, name, ip, status="לא זמין"):
         self.name = name
         self.ip = ip
-        self.ping_status = ping_status
+        self.status = status
 
 class MainApplication(tk.Tk):
     def __init__(self):
@@ -25,44 +25,25 @@ class MainApplication(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def create_widgets(self):
-        # הוספת 5 לחצנים משמאל לימין מעל הטבלה
-        button1 = tk.Button(self, text="מחק עמדה", command=self.delete_selected_device)
-        button1.grid(row=0, column=0, padx=5, pady=5)
-
-        button2 = tk.Button(self, text="לחצן 2", command=lambda: self.button_action(2))
-        button2.grid(row=0, column=1, padx=5, pady=5)
-
-        button3 = tk.Button(self, text="לחצן 3", command=lambda: self.button_action(3))
-        button3.grid(row=0, column=2, padx=5, pady=5)
-
-        button4 = tk.Button(self, text="לחצן 4", command=lambda: self.button_action(4))
-        button4.grid(row=0, column=3, padx=5, pady=5)
-
-        button5 = tk.Button(self, text="לחצן 5", command=lambda: self.button_action(5))
-        button5.grid(row=0, column=4, padx=5, pady=5)
-
-        # הוספת כפתור "מחק מידע מקובץ"
-        delete_data_button = tk.Button(self, text="מחק מידע מקובץ", command=self.delete_data_from_file)
-        delete_data_button.grid(row=3, column=0, pady=10, columnspan=5)
-
-        # השארת כפתור הפלוס במקום שלו
+        # הוספת לחצן "הוסף עמדה"
         add_device_button = tk.Button(self, text="הוסף עמדה", command=self.add_device)
-        add_device_button.grid(row=1, column=0, pady=10, columnspan=5)
+        add_device_button.grid(row=0, column=0, pady=10)
+
+        # הוספת לחצן "מחק מידע מהקובץ"
+        delete_data_button = tk.Button(self, text="מחק מידע מהקובץ", command=self.delete_data_from_file)
+        delete_data_button.grid(row=0, column=1, pady=10)
 
         self.tree = ttk.Treeview(self, columns=("Name", "IP", "Status"), show="headings", height=10, selectmode="browse")
         self.tree.heading("Name", text="שם")
         self.tree.heading("IP", text="כתובת IP")
         self.tree.heading("Status", text="מצב")
-        self.tree.grid(row=2, column=0, columnspan=5, pady=20)
+        self.tree.grid(row=1, column=0, columnspan=2, pady=20)
 
         # קריאה לפונקציה load_devices_from_file כדי להציג את המכשירים מהקובץ
         self.load_devices_from_file()
 
         # הוספת יכולת בחירה לטבלה
         self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
-
-    def button_action(self, button_number):
-        messagebox.showinfo("הודעה", f"לחצת על לחצן {button_number}")
 
     def add_device(self):
         add_device_window = tk.Toplevel(self)
@@ -87,38 +68,13 @@ class MainApplication(tk.Tk):
                     messagebox.showwarning("שגיאה", "השם או כתובת ה-IP כבר קיימים. נסה שנית.")
                 else:
                     new_device = Device(name, ip)
-                    # הכנסת המכשיר לטבלה במקום ההוספה שלך
-                    self.tree.insert("", tk.END, values=(new_device.name, new_device.ip, 'פעיל' if new_device.ping_status else 'לא פעיל'))
-                    status = self.check_device_status(new_device)
-                    new_device.ping_status = status
-                    self.show_device_details(new_device)
+                    self.tree.insert("", tk.END, values=(new_device.name, new_device.ip, new_device.status))
                     self.add_device_to_file(new_device)
 
             add_device_window.destroy()
 
         confirm_button = tk.Button(add_device_window, text="אישור", command=confirm)
         confirm_button.grid(row=2, columnspan=2)
-
-    def delete_selected_device(self):
-        selected_items = self.tree.selection()
-        if selected_items:
-            for item_id in selected_items:
-                try:
-                    # נבדוק אם המחרוזת מתחילה ב-I ואז נמיר את החלק המספרי
-                    if item_id.startswith("I"):
-                        item_number = int(item_id[1:])
-                        selected_device = self.devices[item_number - 1]
-                        self.delete_device(selected_device)
-                        print(f"מחקת את המכשיר: {selected_device.name}")
-                    else:
-                        # אחרת, הדפס שגיאה
-                        print(f"Invalid item_id format: {item_id}")
-                except ValueError as e:
-                    # הדפס את הערך שגרם לשגיאה
-                    print(f"Error converting item_id to integer: {e}")
-
-            # לאחר המחיקה, עדכן את המצב בקובץ
-            self.save_devices_to_file()
 
     def delete_data_from_file(self):
         try:
@@ -175,9 +131,9 @@ class MainApplication(tk.Tk):
 
     def refresh_device(self, device):
         status = self.check_device_status(device)
-        device.ping_status = status
+        device.status = "זמין" if status else "לא זמין"
         item_id = self.devices.index(device)
-        self.tree.item(item_id, values=(device.name, device.ip, 'פעיל' if device.ping_status else 'לא פעיל'))
+        self.tree.item(item_id, values=(device.name, device.ip, device.status))
 
     def delete_device(self, device):
         self.devices.remove(device)
@@ -203,9 +159,9 @@ class MainApplication(tk.Tk):
             while True:
                 for device in self.devices:
                     status = self.check_device_status(device)
-                    device.ping_status = status
+                    device.status = "זמין" if status else "לא זמין"
                     item_id = self.devices.index(device)
-                    self.tree.item(item_id, values=(device.name, device.ip, 'פעיל' if device.ping_status else 'לא פעיל'))
+                    self.tree.item(item_id, values=(device.name, device.ip, device.status))
 
                 self.save_devices_to_file()
 
@@ -228,7 +184,7 @@ class MainApplication(tk.Tk):
                 devices = [Device(*line.strip().split(',')) for line in lines]
 
             for device in devices:
-                self.tree.insert("", tk.END, values=(device.name, device.ip, 'פעיל' if device.ping_status else 'לא פעיל'))
+                self.tree.insert("", tk.END, values=(device.name, device.ip, device.status))
 
             self.devices = devices
 
